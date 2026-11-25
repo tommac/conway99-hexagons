@@ -1,0 +1,484 @@
+\documentclass[11pt]{amsart}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs}
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\srg}{\operatorname{srg}}
+
+\title[Hexagons in a Conway 99-graph]{If Conway's 99-graph exists,\\ it has at least 209,781 induced hexagons}
+\author{Tom Maciejewski}
+\address{Independent researcher, New Jersey, USA}
+\email{tommaciejewski4@gmail.com}
+\subjclass[2020]{05E30, 05C35, 68V15}
+\keywords{strongly regular graph, Conway's 99-graph problem, SAT, proof certificate, Lean}
+
+\begin{document}
+
+\begin{abstract}
+Conway's 99-graph problem asks whether a strongly regular graph with
+parameters $(99,14,1,2)$ exists. Reimbayev showed that such a graph has at
+least $209{,}286$ induced hexagons, with equality exactly when no two disjoint
+triangles are joined by exactly two edges; by a theorem of Makhnev, equality
+cannot hold. We prove that such a graph has at least $209{,}781$ induced
+hexagons, $495$ above Reimbayev's bound. The excess is the number of pairs of
+disjoint triangles joined by exactly two edges, for which the best bound we
+know of was $96$. The proof has two parts. A counting identity, proved by hand
+and in Lean, expresses this number through a local statistic $D(x)\le84$ at
+each vertex $x$. A SAT computation shows that $D(x)\le74$ at every vertex. Its
+refutation is accepted by two independent proof checkers, one of them formally
+verified, and the symmetry breaking it uses is proved sound in Lean as an
+abstract theorem; the translation of the problem into the instance is tested,
+not formally verified. The existence problem remains open.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+A graph is \emph{strongly regular} with parameters $(v,k,\lambda,\mu)$ if it
+has $v$ vertices, is $k$-regular, and any two adjacent vertices have $\lambda$
+common neighbours while any two nonadjacent vertices have $\mu$. Whether an
+$\srg(99,14,1,2)$ exists is the second of Conway's five \$1{,}000
+problems~\cite{Conway}. It is open, and this paper does not decide it.
+
+Let $\Gamma$ be an $\srg(99,14,1,2)$. Since $\lambda=1$, every edge lies in
+exactly one triangle. We call the triangles \emph{lines}. Two disjoint lines
+are joined by at most three edges (Lemma~\ref{lem:matching}). Following
+Reimbayev~\cite{Reimbayev}, let
+\begin{align*}
+  n_1&=\text{the number of unordered pairs of disjoint lines joined by exactly three edges},\\
+  n_3&=\text{the number of unordered pairs of disjoint lines joined by exactly two edges}.
+\end{align*}
+The subscripts are his names and do not count edges.
+
+\begin{theorem}\label{thm:main}
+Every $\srg(99,14,1,2)$ satisfies $n_3\ge495$ and $n_1\le1221$.
+\end{theorem}
+
+Reimbayev proved that the number of induced hexagons in an $\srg(n,k,1,2)$ is
+$F(n,k)+n_3$, where $F(n,k)=\frac1{12}nk(k-2)(2k^2-21k+53)$, and he
+conjectured that $n_3=0$ always~\cite{Reimbayev}. That is false in general: an
+$\srg(243,22,1,2)$ with $n_3=19{,}440$ is known~\cite{Djematene}. For
+$(n,k)=(99,14)$ the value of $F$ is $209{,}286$.
+
+\begin{corollary}\label{cor:hexagons}
+Every $\srg(99,14,1,2)$ has at least $209{,}781$ induced hexagons.
+\end{corollary}
+
+\subsection*{What was known}
+The identity $3n_1+n_3=4158$ holds in every $\srg(99,14,1,2)$, so $n_3$ is a
+multiple of $3$ between $0$ and $4158$. Makhnev~\cite{Makhnev} proved in 1988
+that no $\srg(99,14,1,2)$ satisfies a condition which Reimbayev showed to be
+equivalent to $n_3=0$, and Keramatipour~\cite[Theorem~3.4.2]{Keramatipour}
+gives a second proof that $n_3\ne0$. So $n_3\ge3$ follows from the refereed
+literature; that observation is Reimbayev's. A 2026 preprint of
+Kova\v{l}~\cite[Corollary~3.3]{Koval} gives $n_1\le1354$, that is, $n_3\ge96$.
+Theorem~\ref{thm:main} improves this to $495$, by a route that uses neither
+Makhnev's theorem nor his condition.
+
+\subsection*{Method}
+Fix a vertex $x$. Its $14$ neighbours form seven adjacent pairs, and the other
+$84$ vertices correspond to the nonadjacent pairs of neighbours
+(Section~\ref{sec:rooted}). This well-known picture defines $84$
+\emph{transition positions} at $x$, each of which is \emph{canonical} or not.
+Let $D(x)$ be the number of canonical ones. Two results give
+Theorem~\ref{thm:main}:
+\begin{itemize}
+\item Theorem~\ref{thm:flags}: $n_1=\frac16\sum_xD(x)$ and
+$n_3=\frac12\sum_x(84-D(x))$. This is proved by hand in
+Section~\ref{sec:counting} and also in Lean.
+\item Theorem~\ref{thm:sat}: $D(x)\le74$ for every vertex $x$. This is a
+computation, described in Section~\ref{sec:sat}.
+\end{itemize}
+Section~\ref{sec:trust} says exactly which steps are machine-checked and which
+are not.
+
+\section{The rooted picture}\label{sec:rooted}
+
+Let $\Gamma$ be an $\srg(99,14,1,2)$, let $x$ be a vertex and $N(x)$ its
+neighbourhood.
+
+Each $a\in N(x)$ has exactly one neighbour in $N(x)$, the common neighbour of
+the adjacent vertices $x$ and $a$. So $N(x)$ induces a perfect matching. Write
+$a'$ for the partner of $a$; the lines through $x$ are the seven sets
+$\{x,a,a'\}$.
+
+Let $y$ be a vertex outside $\{x\}\cup N(x)$. Then $N(y)\cap N(x)$ is a pair
+$\{a,b\}$, and $b\ne a'$, since otherwise the adjacent vertices $a,a'$ would
+have the two common neighbours $x$ and $y$. Conversely, if $a,b\in N(x)$ are
+not partners, they are nonadjacent and have exactly two common neighbours:
+$x$, and one vertex outside $N(x)$, which we call $z_{ab}$. (A common
+neighbour inside $N(x)$ would be the partner of both.) So the $84$
+outside vertices correspond to the $\binom{14}{2}-7=84$ pairs of non-partners,
+and $1+14+84=99$. All edges meeting $\{x\}\cup N(x)$ are now known. Only the
+$\binom{84}{2}=3486$ adjacencies among the outside vertices are not.
+
+Fix $a\in N(x)$. The neighbours of $a$ are $x$, $a'$ and the twelve vertices
+$z_{ab}$ with $b\in N(x)\setminus\{a,a'\}$. As $N(a)$ also induces a perfect
+matching, in which $x$ is matched to $a'$, the twelve vertices $z_{ab}$ are
+matched among themselves. This defines an involution $M_a$ without fixed
+points on $N(x)\setminus\{a,a'\}$:
+\[
+  M_a(b)=c \iff z_{ab}\sim z_{ac}.
+\]
+A \emph{transition position} at $x$ is a pair $(a,\{b,b'\})$ consisting of a
+neighbour $a$ and a line $\{x,b,b'\}$ not containing $a$. There are
+$14\cdot6=84$ of them. The position is \emph{canonical} if $M_a(b)=b'$, that
+is, if $z_{ab}\sim z_{ab'}$. Let $D(x)$ be the number of canonical positions
+at $x$, so $0\le D(x)\le84$.
+
+If all four positions involving two lines through $x$ are canonical, the nine
+vertices they define induce the Paley graph of order $9$, the unique
+$\srg(9,4,1,2)$. So $D(x)$ measures how much of this local pattern is present
+at $x$.
+
+\section{From the local statistic to the global count}\label{sec:counting}
+
+\begin{lemma}\label{lem:matching}
+The edges between two disjoint lines form a matching. In particular there are
+at most three of them.
+\end{lemma}
+
+\begin{proof}
+If a vertex of the first line had two neighbours in the second, it would form
+a second triangle on an edge of the second line.
+\end{proof}
+
+\begin{theorem}\label{thm:flags}
+In every $\srg(99,14,1,2)$,
+\[
+  n_1=\frac16\sum_{x}D(x),\qquad n_3=\frac12\sum_{x}\bigl(84-D(x)\bigr).
+\]
+\end{theorem}
+
+\begin{proof}
+A \emph{flag} is a triple $(x,a,b)$ with $a,b\in N(x)$ and
+$b\notin\{a,a'\}$. There are $14\cdot12=168$ flags at each vertex, two for
+each transition position $(a,\{b,b'\})$. Call a flag canonical if its position
+is.
+
+Given a flag, let $z=z_{ab}$, let $T'=\{x,b,b'\}$ be the line on the edge
+$xb$, and let $T=\{a,z,y\}$ be the line on the edge $az$. The vertex $y$ is
+outside $\{x\}\cup N(x)$: it is not $x$ because $x\not\sim z$, and it is not
+in $N(x)$ because the only neighbour of $a$ in $N(x)$ is $a'$, and
+$a'\not\sim z$. Hence $T$ and $T'$ are disjoint, and $y=z_{ac}$ for some $c$;
+by definition $c=M_a(b)$. The edges $ax$ and $zb$ join $T$ to $T'$. By
+Lemma~\ref{lem:matching} the only other possible edge is $yb'$, and since
+$y=z_{ac}$ is adjacent to exactly $a$ and $c$ in $N(x)$, it is present if and
+only if $c=b'$. So a canonical flag gives a pair of disjoint lines joined by
+three edges, and a noncanonical flag gives a pair joined by two.
+
+We count the flags that give a fixed pair. Let $\{T_1,T_2\}$ be joined by
+three edges. Choose which line is $T'$ (two ways), then $x\in T'$ (three
+ways), then $b\in T'\setminus\{x\}$ (two ways). Let $a$ and $z$ be the vertices
+of the other line joined to $x$ and to $b$. Then $a\not\sim b$ because the
+joining edges form a matching, and $z$ is the common neighbour of $a$ and $b$
+other than $x$. So $(x,a,b)$ is a flag giving $\{T_1,T_2\}$, and every such
+flag arises in this way: there are $12$. If $\{T_1,T_2\}$ is joined by two
+edges, choose which line is $T'$ (two ways); the ends of the two edges in $T'$
+must be $x$ and $b$, in either order. There are $4$ such flags.
+
+The canonical flags number $2\sum_xD(x)$ and the others
+$2\sum_x(84-D(x))$. Dividing by $12$ and by $4$ gives the two formulas.
+\end{proof}
+
+Adding the formulas gives $3n_1+n_3=\frac12\cdot99\cdot84=4158$, which is
+Reimbayev's identity~\cite{Reimbayev}. Theorem~\ref{thm:flags} is the
+per-vertex form of the double count behind Reimbayev's relation
+$3n_1+n_3=\frac14nk(k-2)$: a transition position at $x$ is a line through $x$
+together with a further neighbour of $x$.
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}, given Theorem~\ref{thm:sat}]
+By Theorem~\ref{thm:sat}, $\sum_xD(x)\le99\cdot74=7326=6\cdot1221$. This sum
+equals $6n_1$, so $n_1\le1221$ and $n_3=4158-3n_1\ge495$.
+\end{proof}
+
+\section{The computation}\label{sec:sat}
+
+\begin{theorem}\label{thm:sat}
+In every $\srg(99,14,1,2)$ and at every vertex $x$, $D(x)\le74$.
+\end{theorem}
+
+The proof is a refutation by a SAT solver of the statement ``there is an
+$\srg(99,14,1,2)$ with a vertex $x$ such that $D(x)\ge75$''. We describe the
+instance and the checks; the encoder that writes it is part of the material
+accompanying this paper~\cite{Artifact}.
+
+\subsection*{The instance}
+By Section~\ref{sec:rooted}, an $\srg(99,14,1,2)$ with a chosen vertex and a
+labelling of its neighbours is the same thing as a choice of the $3486$
+adjacencies among the $84$ labelled
+outside vertices for which the whole graph on $99$ vertices satisfies the
+strongly regular conditions. The instance has one Boolean variable for each of
+these adjacencies and clauses expressing those conditions. The $84$ canonical
+positions at the root correspond to $84$ of the variables, the adjacencies
+$z_{ab}\sim z_{ab'}$, and a sequential-counter encoding~\cite{Sinz} of
+``at least $75$ of them are true'' is added.
+
+\subsection*{Symmetry}
+The labelling is unique up to permuting the seven lines through $x$ and
+swapping the two vertices of each. These relabellings form the group
+$G=S_2\wr S_7$ of order $7!\cdot2^7=645{,}120$, which acts on the $3486$
+variables and preserves both the strongly regular conditions and the set of
+canonical positions. For $91$ elements $g\in G$ (the $7$ swaps within one line,
+and, for each of the $21$ pairs of lines, their transposition combined with
+each of the $4$ swap patterns on them) the instance contains lex-leader
+constraints $X\le_{\mathrm{lex}}gX$~\cite{Crawford}, where $X$ lists the $84$
+canonical variables first and then the others, each block in increasing order
+of its slots. With these constraints the instance has $1{,}807{,}340$ variables
+and $4{,}490{,}236$ clauses.
+
+\subsection*{The refutation}
+CaDiCaL~3.0.1~\cite{CaDiCaL} reports the instance unsatisfiable after
+about an hour and writes an LRAT proof of $13.6$\,GB. That proof is accepted by
+\texttt{cake\_lpr}~\cite{CakeLpr}, a checker whose implementation is itself
+formally verified, and by \texttt{lrat-check} from the
+\texttt{drat-trim} distribution~\cite{DratTrim}. The proof was streamed to both
+checkers as it was written; its SHA-256 digest is recorded, so a rerun can be
+compared with it. The weaker instance asserting $D\ge76$ is also
+refuted, in the same way as the instance for $D\ge75$. The instances
+asserting $D\ge77$ and $D\ge78$ are refuted by Glucose~4.2~\cite{Glucose} with DRAT proofs checked by
+\texttt{drat-trim} and, after conversion to LRAT, by \texttt{cake\_lpr}
+(Section~\ref{sec:repro}).
+
+\subsection*{From one root to every vertex}
+The refutation concerns the fixed labelled root. If some $\srg(99,14,1,2)$ had
+a vertex $v$ with $D(v)\ge75$, the labelling of Section~\ref{sec:rooted} with
+$x=v$ would be a satisfying assignment, after applying an element of $G$ to
+meet the lex-leader constraints. So the refutation gives $D(v)\le74$ for every
+vertex of every such graph.
+
+\section{What is verified}\label{sec:trust}
+
+A computer-assisted proof is as strong as its weakest link, so we list the
+links.
+
+\subsection*{Proved in Lean}
+The following are theorems of a Lean~4 development~\cite{Lean4,Mathlib}, and
+each depends only on Lean's three standard axioms.
+\begin{itemize}
+\item The rooted reduction of Section~\ref{sec:rooted}, in both directions,
+including the statement that any vertex of a given graph can be taken as the
+root.
+\item The action of $G$ on labels and on adjacency variables, and the
+soundness of lex-leader constraints: for a group acting on the variables and
+an invariant set of constraints, adding $X\le_{\mathrm{lex}}gX$ for any set of
+group elements and one fixed order preserves satisfiability.
+\item Theorem~\ref{thm:flags}, and the derivation of the bounds on $n_1$ and
+$n_3$ from a bound on $D(x)$ at every vertex (for the rung $D\le77$; the
+same arithmetic gives the other rungs).
+\end{itemize}
+
+\subsection*{Checked by proof checkers}
+That the instance, as a file, is unsatisfiable.
+
+\subsection*{Tested, not proved}
+That the file says what Section~\ref{sec:sat} claims. The instance is produced
+by a Python program, and the following facts about it are supported by tests
+and exhaustive finite checks but not by formal proofs.
+\begin{itemize}
+\item The clauses express the strongly regular conditions and the constraint
+$D\ge75$. The $84$ counted variables were compared with the definition of the
+canonical positions. The generic part of the encoder gives satisfiable
+instances on five parameter sets for which strongly regular graphs are known;
+the skeleton, lex-leader and counter layers were tested separately.
+\item The emitted lex-leader clauses express $X\le_{\mathrm{lex}}gX$.
+\item The permutations used are the ones that Lean proves to form the group
+action. They were compared entry by entry with tables exported from Lean, and
+the invariance of the canonical positions was checked for all $645{,}120$
+group elements. The invariance of the strongly regular conditions under $G$ is
+tested, not proved; the Lean theorem takes it as a hypothesis.
+\end{itemize}
+Closing this gap needs a verified encoder, which we have not written. It is
+the standard gap in certificate-based
+combinatorics~\cite{Pythagorean}.
+
+\subsection*{Cited}
+Reimbayev's hexagon formula, used only for Corollary~\ref{cor:hexagons}.
+
+\section{Remarks}
+
+\begin{remark}[Weaker bounds]
+Table~\ref{tab:ladder} shows what weaker hypotheses give by the same
+arithmetic. The hypothesis $D(x)\le83$ says that no vertex is canonical in all
+$84$ positions; its negation has its own certified refutation. The value
+$D(x)=83$ is impossible for an elementary reason: if the position
+$(a,\{b,b'\})$ is not canonical then neither is $(a,\{c,c'\})$, where
+$c=M_a(b)$. Instances asserting $D\ge81$, $D\ge79$, $D\ge78$, $D\ge77$ and
+$D\ge76$ were refuted on the way to $D\ge75$. We did not certify lower
+rungs: a run on the instance for $D\ge74$ was stopped after four hours.
+\end{remark}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Hypothesis at every vertex & $n_3\ge$ & $n_1\le$ & hexagons $\ge$\\
+\midrule
+none (Makhnev and Reimbayev) & $3$ & $1385$ & $209{,}289$\\
+none (Kova\v{l}~\cite{Koval}) & $96$ & $1354$ & $209{,}382$\\
+$D(x)\le83$ & $51$ & $1369$ & $209{,}337$\\
+$D(x)\le82$ & $99$ & $1353$ & $209{,}385$\\
+$D(x)\le77$ & $348$ & $1270$ & $209{,}634$\\
+$D(x)\le76$ & $396$ & $1254$ & $209{,}682$\\
+$D(x)\le75$ & $447$ & $1237$ & $209{,}733$\\
+$D(x)\le74$ & $495$ & $1221$ & $209{,}781$\\
+\bottomrule
+\end{tabular}
+\medskip
+\caption{Bounds for an $\srg(99,14,1,2)$ from bounds on $D$.}\label{tab:ladder}
+\end{table}
+
+\begin{remark}[How far this is from the problem]
+The bound $D(x)\le74$ excludes the values $75,\dots,84$ of $D(x)$, and
+$n_3\ge495$ excludes about an eighth of the range $[0,4158]$. At every vertex at
+least ten of the $84$ positions are non-canonical, so the local pattern
+which Reimbayev's conjecture would force everywhere is far from complete. The
+computation does not suggest that the remaining cases are within reach of
+the same method.
+\end{remark}
+
+\begin{remark}[Related work]
+The rooted picture of Section~\ref{sec:rooted} is not new. It appears in SAT
+attacks on the problem by Keramatipour~\cite{Keramatipour} and
+Selub~\cite{Selub}, and again in recent work of Thakkar and
+Severini~\cite{ThakkarSeverini}. What is added here is its formal proof, the
+symmetry breaking over the stabiliser of the root with a proof of soundness,
+and the per-vertex statistic $D$. Reimbayev has classified the induced
+subgraphs of order six~\cite{Reimbayev6} and seven~\cite{Reimbayev7} in these
+graphs.
+Automorphisms of a putative graph are severely restricted~\cite{BehbahaniLam};
+we do not use this.
+\end{remark}
+
+\section{Reproducibility}\label{sec:repro}
+
+The encoder is written in Python~3 with \texttt{python-sat}~1.9.dev7. The
+solvers are CaDiCaL~3.0.1 and Glucose~4.2, and the checkers are
+\texttt{cake\_lpr} (commit \texttt{a36874a8}) and \texttt{drat-trim} with
+\texttt{lrat-check} (commit \texttt{2e3b2dc0}). The Lean development uses
+Lean~4.32.2 with the matching Mathlib release. The accompanying
+material~\cite{Artifact} contains the encoder, the Lean sources, the commands
+that regenerate every instance and check every proof, and a ledger with the
+SHA-256 digests of the instances and proofs. The instance behind
+Theorem~\ref{thm:sat} has digest
+\begin{center}
+\texttt{41a769206eb067b42534c9402a5b01f4af61f4c0dd181242519d59086efcf598},
+\end{center}
+and its LRAT proof has digest
+\begin{center}
+\texttt{fdbe2e91b1b8780f1f9e91e2798a6ac68268f676ffc032d833d30973d35c42cb}.
+\end{center}
+The instances for $D\ge78$ and $D\ge77$, and their DRAT and LRAT proofs, were
+regenerated from the material and agree byte for byte with the digests in the
+ledger.
+
+\begin{thebibliography}{99}
+
+\bibitem{CaDiCaL}
+A.~Biere, T.~Faller, K.~Fazekas, M.~Fleury, N.~Froleyks and F.~Pollitt,
+CaDiCaL 2.0, in \emph{CAV 2024}, Lecture Notes in Comput. Sci. 14681,
+Springer, 2024, 133--152.
+
+\bibitem{Djematene}
+D.~Djematene, Strongly regular graphs: the automorphism group of a Conway
+99-graph, new graphs with parameters $(243,22,1,2)$, and a 2-adic feasibility
+condition, preprint, Zenodo, 2026,
+\href{https://doi.org/10.5281/zenodo.23305123}{doi:10.5281/zenodo.23305123}.
+
+\bibitem{Glucose}
+G.~Audemard and L.~Simon, Predicting learnt clauses quality in modern SAT
+solvers, in \emph{Proc. IJCAI 2009}, 399--404.
+
+\bibitem{BehbahaniLam}
+M.~Behbahani and C.~Lam, Strongly regular graphs with non-trivial
+automorphisms, \emph{Discrete Math.} \textbf{311} (2011), 132--144.
+
+\bibitem{Conway}
+J.~H. Conway, Five \$1,000 problems (update 2017), On-Line Encyclopedia of
+Integer Sequences, entry A248380,
+\url{https://oeis.org/A248380/a248380.pdf}.
+
+\bibitem{Crawford}
+J.~M. Crawford, M.~L. Ginsberg, E.~M. Luks and A.~Roy, Symmetry-breaking
+predicates for search problems, in \emph{Proc. KR'96}, Morgan Kaufmann, 1996,
+148--159.
+
+\bibitem{Pythagorean}
+M.~J.~H. Heule, O.~Kullmann and V.~W. Marek, Solving and verifying the Boolean
+Pythagorean triples problem via cube-and-conquer, in \emph{SAT 2016}, Lecture
+Notes in Comput. Sci. 9710, Springer, 2016, 228--245.
+
+\bibitem{Keramatipour}
+A.~Keramatipour, Approaching the Conway-99 problem using SAT solvers, M.Phil.
+dissertation, University of Cambridge, 2023; arXiv:2604.23037.
+
+\bibitem{Artifact}
+T.~Maciejewski, Hexagons in a Conway 99-graph: code, certificates and Lean
+sources, 2026, \url{https://github.com/tommac/conway99-hexagons}.
+
+\bibitem{Koval}
+A.~Kova\v{l}, On the local structure of a hypothetical strongly regular graph
+with parameters $(99,14,1,2)$, preprint, Zenodo, 2026,
+\href{https://doi.org/10.5281/zenodo.23281436}{doi:10.5281/zenodo.23281436}.
+
+\bibitem{Makhnev}
+A.~A. Makhnev, Strongly regular graphs with $\lambda=1$, \emph{Math. Notes}
+\textbf{44} (1988), 847--850.
+
+\bibitem{Mathlib}
+The mathlib Community, The Lean mathematical library, in \emph{Proc. CPP
+2020}, 367--381.
+
+\bibitem{Lean4}
+L.~de Moura and S.~Ullrich, The Lean~4 theorem prover and programming
+language, in \emph{CADE 28}, Lecture Notes in Comput. Sci. 12699, Springer,
+2021, 625--635.
+
+\bibitem{Reimbayev}
+R.~Reimbayev, The lower bound for number of hexagons in strongly regular
+graphs with parameters $\lambda=1$ and $\mu=2$, \emph{e-J. Anal. Appl. Math.}
+\textbf{2024} (2024), 1--14; arXiv:2409.10620.
+
+\bibitem{Reimbayev6}
+R.~Reimbayev, The subgraphs of order six of the family of strongly regular
+graphs with parameters $\lambda=1$ and $\mu=2$, preprint, 2025,
+arXiv:2508.03377.
+
+\bibitem{Reimbayev7}
+R.~Reimbayev, Induced subgraphs of order seven and their frequencies in
+$\srg(n,k,1,2)$, preprint, 2026, arXiv:2608.19410.
+
+\bibitem{Selub}
+N.~Selub, Conway's 99-graph problem: a Boolean satisfiability approach,
+University of Chicago REU paper, 2023,
+\url{https://math.uchicago.edu/~may/REU2023/REUPapers/Selub.pdf}.
+
+\bibitem{Sinz}
+C.~Sinz, Towards an optimal CNF encoding of Boolean cardinality constraints,
+in \emph{CP 2005}, Lecture Notes in Comput. Sci. 3709, Springer, 2005,
+827--831.
+
+\bibitem{CakeLpr}
+Y.~K. Tan, M.~J.~H. Heule and M.~O. Myreen, \texttt{cake\_lpr}: verified
+propagation redundancy checking in CakeML, in \emph{TACAS 2021}, Lecture Notes
+in Comput. Sci. 12652, Springer, 2021, 223--241.
+
+\bibitem{ThakkarSeverini}
+A.~Thakkar and S.~Severini, A forced-structure reduction and verifiable bounds
+for Conway's 99-graph, preprint, 2026, arXiv:2608.11211.
+
+\bibitem{DratTrim}
+N.~Wetzler, M.~J.~H. Heule and W.~A. Hunt, Jr., DRAT-trim: efficient checking
+and trimming using expressive clausal proofs, in \emph{SAT 2014}, Lecture
+Notes in Comput. Sci. 8561, Springer, 2014, 422--429.
+
+\end{thebibliography}
+
+\end{document}

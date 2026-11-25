@@ -1,0 +1,29 @@
+name = "conway99"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["Conway99"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+weak.linter.style.header = false
+# style lints below are for Mathlib contributions; off to keep audit logs readable
+weak.linter.flexible = false
+weak.linter.unusedSimpArgs = false
+weak.linter.unnecessarySeqFocus = false
+weak.linter.unreachableTactic = false
+weak.linter.unusedTactic = false
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.32.2"
+
+[[lean_lib]]
+name = "Conway99"
+
+[[lean_exe]]
+name = "export_frame"
+root = "Conway99.ExportFrame"

@@ -1,0 +1,23 @@
+-- Conway-99 formalization root.  See lean/README.md for what is proved.
+import Conway99.LexLeader
+import Conway99.Group
+import Conway99.T2Lex
+import Conway99.GradedInvariant
+import Conway99.SRG
+import Conway99.Switch2
+import Conway99.Transition
+import Conway99.CanonicalGeometry
+import Conway99.Makhnev
+import Conway99.FlagCount
+import Conway99.Skeleton
+import Conway99.WLOG
+import Conway99.Parity
+import Conway99.C2
+import Conway99.C3
+import Conway99.C3Wlog
+import Conway99.Matchings
+import Conway99.Dirac
+import Conway99.Alpha22
+import Conway99.LratPilot
+import Conway99.Audit
+import Conway99.ExportFrame

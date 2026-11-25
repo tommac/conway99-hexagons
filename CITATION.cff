@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the paper."
+title: "If Conway's 99-graph exists, it has at least 209,781 induced hexagons"
+version: "1.0.0"
+repository-code: "https://github.com/tommac/conway99-hexagons"
+license: CC-BY-4.0
+authors:
+  - family-names: "Maciejewski"
+    given-names: "Tom"
+    orcid: "https://orcid.org/0009-0004-5702-5302"
+keywords:
+  - "strongly regular graph"
+  - "Conway's 99-graph problem"
+  - "SAT"
+  - "proof certificate"
+  - "Lean"
+preferred-citation:
+  type: generic
+  title: "If Conway's 99-graph exists, it has at least 209,781 induced hexagons"
+  authors:
+    - family-names: "Maciejewski"
+      given-names: "Tom"
+      orcid: "https://orcid.org/0009-0004-5702-5302"
+  year: 2026
+  notes: "Preprint"
+  url: "https://github.com/tommac/conway99-hexagons"
