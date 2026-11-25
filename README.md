@@ -1,6 +1,6 @@
 # If Conway's 99-graph exists, it has at least 209,781 induced hexagons
 
-**Tom Maciejewski** · Preprint, 2026 · [Read the paper (PDF)](paper.pdf)
+**Tom Maciejewski** · Preprint, 2026 · [Read the paper (PDF)](paper.pdf) · [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22020005.svg)](https://doi.org/10.5281/zenodo.22020005)
 
 ## Abstract
 
@@ -22,7 +22,7 @@ Conway's 99-graph problem asks whether a strongly regular graph with parameters 
   title  = {If {Conway}'s 99-graph exists, it has at least 209,781 induced hexagons},
   year   = {2026},
   note   = {Preprint},
-  url    = {https://github.com/tommac/conway99-hexagons},
+  doi    = {10.5281/zenodo.22020005},
 }
 ```
 
